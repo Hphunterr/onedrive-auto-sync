@@ -1,0 +1,81 @@
+import win32com.client                  # Con esto controlamos Excel con python 
+import time                             # Con el fin de tener pausas esto dependerá mucho del peso de cada archivo (ajustar en caso de ser necesario en los sleep)
+import pythoncom                        # Inicializar el hilo de COM en python 
+import os                               # Ejecutamos los comandos del sistema (y/o en caso de ser necesario matar un proceso de excel)
+
+# Agrega en la siguiente lista los archivos a recorrer o procesar cada número será un archivo.
+archivos = [1,2,3]
+
+# Bucle para repetir todo el proceso para cada uno de los archivos.
+for numero in archivos: 
+    # Cierra Excel por si quedó algún proceso abierto
+    os.system("TASKKILL /F /IM Excel.exe")
+
+    pythoncom.CoInitialize()
+    xlapp = win32com.client.Dispatch("Excel.Application")
+    xlapp.Visible = True
+    xlapp.DisplayAlerts = False
+
+    # Rutas
+    # Agrega tu ruta donde estarán tus archivos a actualizar .xlsx
+    ruta = "C:/Users/Tunombreusuario/OneDrive - Empresa/NombreCarpeta/"
+
+    # Archivos según número
+    if numero == 1:
+        n_archivo = "Nombre exacto del archivo 1.xlsx"
+    if numero == 2:
+        n_archivo = "Nombre exacto del archivo 2.xlsx"
+    if numero == 3:
+        n_archivo = "Nombre exacto del archivo 3.xlsx"
+
+    # Apertura de archivo
+    t = time.localtime()
+    print(time.strftime("%H:%M:%S", t))
+    print("Archivo " + str(numero) + " en camino")
+    ruta2 = ruta + n_archivo
+    Archivo = xlapp.Workbooks.Open(ruta2)
+
+    # Espera antes de actualizar
+    print("Inicia sleep " + time.strftime("%H:%M:%S", time.localtime()))
+    time.sleep(30)
+    print("Fin sleep " + time.strftime("%H:%M:%S", time.localtime()))
+
+    # Refresca conexiones
+    Archivo.RefreshAll()
+    xlapp.CalculateUntilAsyncQueriesDone()
+
+    # Espera de cálculo
+    time.sleep(30)
+
+    # --- CAMBIO 1: Guardado con reintentos ---
+    print("Guardando archivo...")
+    Archivo.Save()
+    intentos = 0
+    while not Archivo.Saved and intentos < 10:  # Nuevo: máximo 10 intentos de guardado
+        time.sleep(5)  # Nuevo: esperar 5 seg entre intentos
+        intentos += 1
+        print(f"Reintentando guardado... intento {intentos}")
+        try:
+            Archivo.Save()  # Nuevo: fuerza el guardado otra vez
+        except:
+            pass
+
+    # --- CAMBIO 2: Espera extra antes de cerrar ---
+    # Dependiendo del archivo y su peso esto se ajusta con el fin de que el archivo y onedrive logre sincronizar sin problemas.
+
+    print("Esperando que OneDrive sincronice...")
+    time.sleep(10)  # Nuevo: espera 10 seg extra para dar tiempo a OneDrive
+
+    # Cierra archivo
+    Archivo.Close(SaveChanges=True)
+    xlapp.DisplayAlerts = True
+    print("Archivo " + str(numero) + " listo")
+
+    # Limpieza
+    xlapp.Quit()
+    pythoncom.CoUninitialize()
+    xlapp = None
+    Archivo = None
+    del xlapp
+    del Archivo
+  
